@@ -175,73 +175,66 @@ Page({
     var that = this;
     var text = wx.getStorageSync('voice_text') || that.data.voiceContent;
     if (!text) return;
-
-    // 如果已有音频且是暂停状态，直接继续播放
     var existingAudio = that.data.voiceAudio;
-    if (existingAudio && that.data.voicePaused && that.data.voiceWords.length > 0) {
+    if (existingAudio && that.data.voicePaused) {
       existingAudio.play();
-      that.scheduleWords(that.data.voiceHighlightIdx);
       that.setData({ voicePlaying: true, voicePaused: false });
       return;
     }
-
     that.setData({ voicePlaying: true, voicePaused: false, voiceWords: [], voiceHighlightIdx: -1 });
-
-    // 请求TTS（返回JSON: {audio: base64, words: [{text, start_ms, end_ms}]}）
-    app.request({
-      url: '' + app.globalData.apiBase + '/api/tts',
-      method: 'POST',
-      data: 'text=' + encodeURIComponent(text),
-      header: { 'content-type': 'application/x-www-form-urlencoded' },
-      timeout: 60000,
+    // 并行：下载音频 + 获取词时间戳
+    var ttsUrl = app.globalData.apiBase + '/api/tts-raw?text=' + encodeURIComponent(text);
+    wx.downloadFile({
+      url: ttsUrl, timeout: 60000, header: { 'ngrok-skip-browser-warning': 'true' },
       success: function (res) {
-        if (res.data && res.data.code === 200 && res.data.audio) {
-          var words = res.data.words || [];
-          // 将base64音频写入文件
+        if (res.statusCode === 200) {
+          console.log('下载成功:', res.tempFilePath, '大小:', res.totalBytesWritten);
+          // 复制到永久文件
           var fs = wx.getFileSystemManager();
-          var filePath = wx.env.USER_DATA_PATH + '/voice.mp3';
+          var permPath = wx.env.USER_DATA_PATH + '/voice_' + Date.now() + '.mp3';
           try {
-            var arrayBuffer = wx.base64ToArrayBuffer(res.data.audio);
-            fs.writeFileSync(filePath, arrayBuffer);
-            var audio = wx.createInnerAudioContext();
-            audio.src = filePath;
-            audio.onPlay(function () {
-              // 音频开始播放，按词级时间戳调度高亮
-              that.scheduleWords(0);
-            });
-            audio.onEnded(function () {
-              that.setData({ voicePlaying: false, voicePaused: false, voiceHighlightIdx: -1 });
-              that.clearTimers();
-            });
-            audio.onError(function () {
-              wx.showToast({ title: '播放失败', icon: 'none' });
-              that.setData({ voicePlaying: false, voicePaused: false });
-              that.clearTimers();
-            });
-            audio.onPause(function () {
-              that.setData({ voicePlaying: false, voicePaused: true });
-              that.clearTimers();
-            });
-            audio.play();
-            that.setData({ voiceAudio: audio, voiceWords: words });
-          } catch (e) {
-            console.error('音频处理失败:', e);
-            wx.showToast({ title: '音频处理失败', icon: 'none' });
-            that.setData({ voicePlaying: false });
-          }
-        } else {
-          wx.showToast({ title: '语音合成失败', icon: 'none' });
-          that.setData({ voicePlaying: false });
-        }
+            fs.copyFileSync(res.tempFilePath, permPath);
+            console.log('复制到:', permPath);
+          } catch(e) { permPath = res.tempFilePath; }
+          // 获取词时间戳
+          app.request({
+            url: '' + app.globalData.apiBase + '/api/tts', method: 'POST',
+            data: 'text=' + encodeURIComponent(text),
+            header: { 'content-type': 'application/x-www-form-urlencoded' }, timeout: 30000,
+            success: function (r2) {
+              var words = (r2.data && r2.data.words) ? r2.data.words : [];
+              if (!words.length) {
+                var sents = text.split(/[。！？；\n]/).filter(function(s){return s.trim();});
+                words = sents.map(function(s,i){ return {text:s,start_ms:i*2000,end_ms:(i+1)*2000}; });
+              }
+              that.setData({ voiceWords: words });
+            }
+          });
+          var audio = wx.createInnerAudioContext();
+          audio.src = res.tempFilePath;
+          audio.obeyMuteSwitch = false;
+          audio.volume = 1.0;
+          audio.onCanplay(function () { console.log('可以播放了'); audio.play(); });
+          audio.onPlay(function () { console.log('开始播放'); that.scheduleWords(0); });
+          audio.onWaiting(function () { console.log('缓冲中...'); });
+          audio.onEnded(function () { that.setData({ voicePlaying: false, voicePaused: false, voiceHighlightIdx: -1 }); that.clearTimers(); });
+          audio.onError(function (e) { console.error('播放失败:', JSON.stringify(e)); });
+          audio.onPause(function () { that.setData({ voicePlaying: false, voicePaused: true }); that.clearTimers(); });
+          that.setData({ voiceAudio: audio });
+        } else { wx.showToast({ title: '合成失败', icon: 'none' }); that.setData({ voicePlaying: false }); }
       },
-      fail: function () {
-        wx.showToast({ title: 'TTS服务异常', icon: 'none' });
-        that.setData({ voicePlaying: false });
-      }
+      fail: function (err) { console.error('下载失败:', JSON.stringify(err)); wx.showToast({ title: '下载失败:' + (err.errMsg||'未知'), icon: 'none', duration: 3000 }); that.setData({ voicePlaying: false }); }
     });
   },
 
-  // 按词级时间戳调度高亮（精确定时）
+  toggleVoicePlay() {
+    var audio = this.data.voiceAudio;
+    if (!audio) { this.playVoice(); return; }
+    if (this.data.voicePlaying) { audio.pause(); }
+    else if (this.data.voicePaused) { audio.play(); this.setData({ voicePlaying: true, voicePaused: false }); }
+  },
+
+  clearTimers() { var t = this.data.voiceTimers; if (t && t.length) { t.forEach(function (x) { clearTimeout(x); }); this.setData({ voiceTimers: [] }); } },
   scheduleWords(startIdx) {
     var that = this;
     that.clearTimers();
@@ -249,35 +242,13 @@ Page({
     if (!words.length) return;
     var timers = [];
     for (var i = startIdx; i < words.length; i++) {
-      (function (idx) {
+      (function(idx) {
         var delay = words[idx].start_ms;
-        var timer = setTimeout(function () {
-          that.setData({ voiceHighlightIdx: idx });
-        }, delay);
+        var timer = setTimeout(function () { that.setData({ voiceHighlightIdx: idx }); }, delay);
         timers.push(timer);
       })(i);
     }
     that.setData({ voiceTimers: timers });
-  },
-
-  clearTimers() {
-    var timers = this.data.voiceTimers;
-    if (timers && timers.length) {
-      timers.forEach(function (t) { clearTimeout(t); });
-      this.setData({ voiceTimers: [] });
-    }
-  },
-
-  toggleVoicePlay() {
-    var audio = this.data.voiceAudio;
-    if (!audio) { this.playVoice(); return; }
-    if (this.data.voicePlaying) {
-      audio.pause();
-    } else if (this.data.voicePaused) {
-      audio.play();
-      this.scheduleWords(this.data.voiceHighlightIdx >= 0 ? this.data.voiceHighlightIdx : 0);
-      this.setData({ voicePlaying: true, voicePaused: false });
-    }
   },
 
   onHide() {

@@ -1,5 +1,4 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, request, jsonify, Response
 import requests, json, sqlite3, hashlib, base64, os, tempfile, subprocess, threading
 from datetime import datetime
 
@@ -7,7 +6,13 @@ API_KEY = "sk-d0a10ee6bc0b4305b16a2014904bd986"
 API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 app = Flask(__name__)
-CORS(app)
+
+@app.after_request
+def add_cors(resp):
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Headers'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = '*'
+    return resp
 
 def init_db():
     conn = sqlite3.connect("database.db")
@@ -29,9 +34,8 @@ RULES = "【规则】禁止LaTeX语法，用纯数学符号。分步解题用第
 def call_llm(prompt):
     headers = {"Authorization": "Bearer " + API_KEY, "Content-Type": "application/json"}
     body = {"model": "deepseek-chat", "messages": [{"role": "user", "content": RULES + "\n" + prompt}], "temperature": 0.2}
-    prox = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"}
     try:
-        r = requests.post(API_URL, headers=headers, json=body, timeout=60, proxies=prox)
+        r = requests.post(API_URL, headers=headers, json=body, timeout=60)
         return r.json()["choices"][0]["message"]["content"]
     except:
         return "AI调用失败"
@@ -153,10 +157,33 @@ def grade():
 @app.route("/api/grade-image", methods=["POST"])
 def grade_image():
     file = request.files.get("file")
-    if not file: return jsonify({"code":400,"msg":"请上传图片"})
-    b64 = base64.b64encode(file.read()).decode()
-    txt = call_llm(request.form.get("prompt","请描述图片内容") + "\n图片：" + b64[:100] + "...")
-    return jsonify({"code":200,"content":call_llm("批改作业：" + txt)})
+    question = request.form.get("question", "")
+    prompt = request.form.get("prompt", "请观察图片，描述其中的数学题目和解答")
+    if not file: return jsonify({"code": 400, "msg": "请上传图片"})
+    img_b64 = base64.b64encode(file.read()).decode("utf-8")
+    # 豆包视觉识别
+    DK = "ark-10379c9d-ddf0-4de3-b82d-23398deb3a29-65bea"
+    EP = "ep-20260602083741-jvshd"
+    headers = {"Authorization": "Bearer " + DK, "Content-Type": "application/json"}
+    body = {"model": EP, "messages": [{"role": "user", "content": [
+        {"type": "text", "text": prompt},
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + img_b64}}
+    ]}], "temperature": 0.2}
+    try:
+        r = requests.post("https://ark.cn-beijing.volces.com/api/v3/chat/completions", headers=headers, json=body, timeout=60)
+        result = r.json()
+        if "choices" in result:
+            vision = result["choices"][0]["message"]["content"]
+            # 判断类型
+            t = call_llm("判断：印刷书本内容回复BOOK，手写作业回复HW。只回复BOOK或HW。内容：" + vision[:500])
+            if "BOOK" in t:
+                ans = call_llm("请给出完整解题步骤和答案：\n" + vision[:1000])
+            else:
+                ans = call_llm("批改以下作业：1对错判断2错误指正3正确解法\n" + vision[:1000])
+            return jsonify({"code": 200, "content": ans})
+        return jsonify({"code": 500, "msg": "视觉识别失败"})
+    except Exception as e:
+        return jsonify({"code": 200, "content": call_llm(prompt + "\n（注：用户上传了图片）")})
 
 @app.route("/api/tts", methods=["POST"])
 def tts():
@@ -189,6 +216,32 @@ def tts():
             return jsonify({"code":200,"audio":base64.b64encode(aud).decode(),"words":words})
     except: pass
     return jsonify({"code":500,"msg":"TTS失败"})
+
+@app.route("/api/tts-raw", methods=["POST","GET"])
+def tts_raw():
+    """返回原始MP3二进制，适配手机端"""
+    text = (request.form.get("text","") or request.args.get("text",""))[:1500]
+    DOUBAO = "ark-10379c9d-ddf0-4de3-b82d-23398deb3a29-65bea"
+    EP = "ep-20260531173409-7sr5x"
+    # 豆包TTS
+    if EP:
+        try:
+            h = {"Authorization":"Bearer "+DOUBAO,"Content-Type":"application/json"}
+            d = {"model":EP,"input":text,"voice":"zh_female_tianmei","response_format":"mp3"}
+            r = requests.post("https://ark.cn-beijing.volces.com/api/v3/endpoints/"+EP+"/audio/speech",headers=h,json=d,timeout=30)
+            if r.status_code==200 and len(r.content)>100:
+                return Response(r.content, mimetype="audio/mpeg")
+        except: pass
+    # Edge兜底
+    try:
+        ta = tempfile.NamedTemporaryFile(suffix=".mp3",delete=False); tap = ta.name; ta.close()
+        subprocess.run(["edge-tts","-v","zh-CN-XiaoxiaoNeural","-t",text,"--write-media",tap,"--rate=-10%"],capture_output=True,timeout=30)
+        if os.path.exists(tap):
+            with open(tap,"rb") as f: aud = f.read()
+            os.unlink(tap)
+            return Response(aud, mimetype="audio/mpeg")
+    except: pass
+    return Response(b"",status=500)
 
 application = app
 if __name__ == "__main__":

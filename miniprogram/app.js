@@ -3,6 +3,9 @@ App({
   // 全局网络请求封装
   request: function (options) {
     var that = this;
+    // ngrok 跳过浏览器警告
+    options.header = options.header || {};
+    options.header['ngrok-skip-browser-warning'] = 'true';
     var originalFail = options.fail;
     options.fail = function (err) {
       console.error('网络请求失败:', options.url, err);
@@ -28,15 +31,10 @@ App({
     logs.unshift(Date.now())
     wx.setStorageSync('logs', logs)
 
-    // 自动判断API地址：devtools用127.0.0.1，真机用局域网IP
-    var systemInfo = wx.getSystemInfoSync();
-    var platform = systemInfo.platform || '';
-    if (platform === 'devtools' || platform === 'mac' || platform === 'windows') {
-      this.globalData.apiBase = 'http://127.0.0.1:8000';
-    } else {
-      this.globalData.apiBase = 'http://172.20.10.3:8000';
-    }
-    console.log('API地址:', this.globalData.apiBase, '平台:', platform);
+    // ngrok HTTPS公网地址（所有设备通用，包括手机）
+    this.globalData.apiBase = 'https://drinkable-proofs-vagabond.ngrok-free.dev';
+    console.log('API:', this.globalData.apiBase);
+    console.log('API地址:', this.globalData.apiBase);
 
     var userHabit = wx.getStorageSync('user_habit') || '';
     this.globalData.userHabit = userHabit;
