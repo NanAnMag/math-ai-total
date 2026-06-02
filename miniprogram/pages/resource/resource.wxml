@@ -1,0 +1,293 @@
+<view class="page">
+  <view class="header">📚 专项学习资源 & 学习规划</view>
+
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 0 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="0">
+      <text>📖 学习资源</text>
+    </view>
+    <view class="tab-item {{activeTab === 1 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="1">
+      <text>📅 学习规划</text>
+    </view>
+  </view>
+
+  <!-- Tab 0：学习资源 -->
+  <scroll-view scroll-y class="content-scroll" wx:if="{{activeTab === 0}}">
+
+    <!-- 知识点选择区 -->
+    <view class="content-box" style="margin-bottom:24rpx;">
+      <view class="section-label">📌 选择要学习的知识点</view>
+
+      <!-- 从错题提取的知识点标签列表 -->
+      <view class="kp-tags" wx:if="{{knowledgePoints.length > 0}}">
+        <text class="kp-tag {{selectedKp === item ? 'kp-tag-active' : ''}}" wx:for="{{knowledgePoints}}" wx:key="index" bindtap="selectKp" data-kp="{{item}}">{{item}}</text>
+      </view>
+
+      <!-- 自定义输入 -->
+      <view class="kp-custom">
+        <input class="chapter-input" placeholder="或手动输入知识点，如：定积分换元法" value="{{customKp}}" bindinput="onCustomKpInput" />
+      </view>
+
+      <button class="generate-btn" bindtap="startGenerate" disabled="{{loading || (!selectedKp && !customKp)}}">
+        ✨ 生成学习资料
+      </button>
+    </view>
+
+    <!-- 知识点总结 -->
+    <view class="loading-area" wx:if="{{loading}}">
+      <view class="loading-card">
+        <view class="loading-spinner"></view>
+        <text>正在生成知识点与习题，请稍候...</text>
+      </view>
+    </view>
+    <view class="content-box" wx:if="{{!loading && resourceContent}}">
+      <view class="section-label" bindtap="toggleSection" data-key="resource">📌 知识点总结 & 配套习题 <text class="toggle-arrow">{{collapsed.resource ? '▶' : '▼'}}</text><text class="fav-btn" bindtap="saveFavorite" data-title="知识点总结" data-content="{{resourceContent}}"> ⭐收藏</text></view>
+      <view class="stat-row" wx:if="{{!collapsed.resource}}">
+        <view class="stat-item"><text class="stat-num">{{contentStats.chars}}</text><text class="stat-label">字符数</text></view>
+        <view class="stat-item"><text class="stat-num">{{contentStats.readTime}}min</text><text class="stat-label">阅读时长</text></view>
+        <view class="stat-item"><text class="stat-num">{{contentStats.lines}}</text><text class="stat-label">段落数</text></view>
+      </view>
+      <view class="summary-cards" wx:if="{{contentSummary.length > 0 && !collapsed.resource}}">
+        <view class="summary-item" wx:for="{{contentSummary}}" wx:key="index">
+          <text class="summary-dot">{{index + 1}}</text>
+          <text class="summary-text">{{item}}</text>
+        </view>
+      </view>
+      <view wx:if="{{!collapsed.resource}}"><rich-text nodes="{{contentNodes}}"></rich-text></view>
+    </view>
+
+    <view class="divider" wx:if="{{!loading && resourceContent}}"></view>
+
+    <!-- 分层习题 -->
+    <view class="content-box" wx:if="{{!loading && resourceContent}}">
+      <view class="section-label" bindtap="toggleSection" data-key="exercise">📝 分层习题 <text class="toggle-arrow">{{collapsed.exercise ? '▶' : '▼'}}</text><text class="fav-btn" bindtap="saveFavorite" data-title="分层习题" data-content="{{exerciseContent}}"> ⭐</text><text class="copy-btn" bindtap="copyContent" data-content="{{exerciseContent}}"> 📋</text></view>
+      <view class="param-item" wx:if="{{!exerciseContent && !exerciseLoading}}">
+        <text class="param-label">薄弱知识点：{{weakPoint}} ｜ 掌握水平：{{level}}</text>
+      </view>
+      <button class="generate-btn" wx:if="{{!exerciseContent && !exerciseLoading}}" bindtap="generateExercise" disabled="{{exerciseLoading}}">
+        ✨ 生成分层习题
+      </button>
+      <view class="loading-area" wx:if="{{exerciseLoading}}">
+        <view class="loading-card"><view class="loading-spinner"></view><text>正在生成分层习题，请稍候...</text></view>
+      </view>
+      <view wx:if="{{!exerciseLoading && exerciseContent && !collapsed.exercise}}">
+        <view class="stat-row">
+          <view class="stat-item"><text class="stat-num">{{exerciseStats.chars}}</text><text class="stat-label">字符数</text></view>
+          <view class="stat-item"><text class="stat-num">{{exerciseStats.readTime}}min</text><text class="stat-label">阅读时长</text></view>
+        </view>
+        <rich-text nodes="{{exerciseNodes}}"></rich-text>
+      </view>
+    </view>
+
+    <view class="divider" wx:if="{{!loading && resourceContent}}"></view>
+
+    <!-- 个性化讲义 -->
+    <view class="content-box" wx:if="{{!loading && resourceContent}}">
+      <view class="section-label" bindtap="toggleSection" data-key="notes">📖 个性化讲义 <text class="toggle-arrow">{{collapsed.notes ? '▶' : '▼'}}</text><text class="fav-btn" bindtap="saveFavorite" data-title="个性化讲义" data-content="{{notesContent}}"> ⭐</text><text class="copy-btn" bindtap="copyContent" data-content="{{notesContent}}"> 📋</text></view>
+      <view class="param-item" wx:if="{{!notesContent && !notesLoading}}">
+        <text class="param-label">目标知识点：{{weakPoint}} ｜ 学生水平：{{level}}</text>
+      </view>
+      <button class="generate-btn" wx:if="{{!notesContent && !notesLoading}}" bindtap="generateNotes" disabled="{{notesLoading}}">
+        ✨ 生成专属讲义
+      </button>
+
+      <view class="loading-area" wx:if="{{notesLoading}}">
+        <view class="loading-card">
+          <view class="loading-spinner"></view>
+          <text>正在生成专属讲义，请稍候...</text>
+        </view>
+      </view>
+
+      <view wx:if="{{!notesLoading && notesContent && !collapsed.notes}}"><rich-text nodes="{{notesNodes}}"></rich-text></view>
+    </view>
+
+    <!-- 分隔 -->
+    <view class="divider" wx:if="{{!loading && resourceContent}}"></view>
+
+    <!-- 更多工具折叠区 -->
+    <view class="content-box" wx:if="{{!loading && resourceContent}}" style="text-align:center;padding:20rpx;">
+      <text class="section-label" bindtap="toggleMoreTools" style="display:inline;color:#1677ff;">
+        {{showMoreTools ? '🔽 收起更多工具' : '🔽 展开更多工具（章节训练·冲刺卷·解题模板·易混辨析）'}}
+      </text>
+    </view>
+
+    <view wx:if="{{showMoreTools}}">
+
+    <!-- 章节专项训练包 -->
+    <view class="content-box" wx:if="{{!loading && resourceContent}}">
+      <view class="section-label" bindtap="toggleSection" data-key="chapter">🎯 章节专项训练包 <text class="toggle-arrow">{{collapsed.chapter ? '▶' : '▼'}}</text></view>
+      <view class="param-row" wx:if="{{!chapterContent && !chapterLoading}}">
+        <view class="param-col-full">
+          <text class="param-label">训练章节/知识点（默认当前薄弱点）</text>
+          <input class="chapter-input" placeholder="输入训练章节，如：一元函数积分学" value="{{chapterInput}}" bindinput="onChapterInput" />
+        </view>
+      </view>
+      <button class="generate-btn" wx:if="{{!chapterContent && !chapterLoading}}" bindtap="generateChapter" disabled="{{chapterLoading}}">
+        ✨ 生成专项训练包
+      </button>
+
+      <view class="loading-area" wx:if="{{chapterLoading}}">
+        <view class="loading-card">
+          <view class="loading-spinner"></view>
+          <text>正在生成专项训练包，请稍候...</text>
+        </view>
+      </view>
+
+      <rich-text nodes="{{chapterNodes}}" wx:if="{{!chapterLoading && chapterContent}}"></rich-text>
+    </view>
+
+    <!-- 分隔 -->
+    <view class="divider" wx:if="{{!loading && resourceContent}}"></view>
+
+    <!-- 考前冲刺卷 -->
+    <view class="content-box" wx:if="{{!loading && resourceContent}}">
+      <view class="section-label" bindtap="toggleSection" data-key="exam">🏆 考前冲刺卷 <text class="toggle-arrow">{{collapsed.exam ? '▶' : '▼'}}</text></view>
+      <view class="param-row" wx:if="{{!examContent && !examLoading}}">
+        <view class="param-col">
+          <text class="param-label">考试类型</text>
+          <picker mode="selector" range="{{examTypeList}}" value="{{examTypeIndex}}" bindchange="onExamTypeChange">
+            <view class="picker-box">{{examTypeList[examTypeIndex]}}</view>
+          </picker>
+        </view>
+        <view class="param-col">
+          <text class="param-label">考察范围</text>
+          <input class="chapter-input" placeholder="如：第1-5章" value="{{examRange}}" bindinput="onExamRangeInput" />
+        </view>
+      </view>
+      <button class="generate-btn" wx:if="{{!examContent && !examLoading}}" bindtap="generateExam" disabled="{{examLoading}}">
+        ✨ 生成冲刺试卷
+      </button>
+
+      <view class="loading-area" wx:if="{{examLoading}}">
+        <view class="loading-card">
+          <view class="loading-spinner"></view>
+          <text>正在生成冲刺试卷，请稍候...</text>
+        </view>
+      </view>
+
+      <rich-text nodes="{{examNodes}}" wx:if="{{!examLoading && examContent}}"></rich-text>
+    </view>
+
+    <!-- 分隔 -->
+    <view class="divider" wx:if="{{!loading && resourceContent}}"></view>
+
+    <!-- 解题模板总结 -->
+    <view class="content-box" wx:if="{{!loading && resourceContent}}">
+      <view class="section-label" bindtap="toggleSection" data-key="template">📋 解题模板总结 <text class="toggle-arrow">{{collapsed.template ? '▶' : '▼'}}</text></view>
+      <view class="param-col-full" wx:if="{{!templateContent && !templateLoading}}">
+        <text class="param-label">目标题型（如：洛必达法则题型、换元积分题型、分部积分题型）</text>
+        <input class="chapter-input" placeholder="输入题型名称" value="{{templateInput}}" bindinput="onTemplateInput" />
+      </view>
+      <button class="generate-btn" wx:if="{{!templateContent && !templateLoading}}" bindtap="generateTemplate" disabled="{{templateLoading}}">
+        ✨ 生成解题模板
+      </button>
+
+      <view class="loading-area" wx:if="{{templateLoading}}">
+        <view class="loading-card">
+          <view class="loading-spinner"></view>
+          <text>正在生成解题模板，请稍候...</text>
+        </view>
+      </view>
+
+      <rich-text nodes="{{templateNodes}}" wx:if="{{!templateLoading && templateContent}}"></rich-text>
+    </view>
+
+    <!-- 分隔 -->
+    <view class="divider" wx:if="{{!loading && resourceContent}}"></view>
+
+    <!-- 易混知识点辨析 -->
+    <view class="content-box" wx:if="{{!loading && resourceContent}}">
+      <view class="section-label" bindtap="toggleSection" data-key="confuse">🔍 易混知识点辨析 <text class="toggle-arrow">{{collapsed.confuse ? '▶' : '▼'}}</text></view>
+      <view class="param-col-full" wx:if="{{!confuseContent && !confuseLoading}}">
+        <text class="param-label">易混知识点（如：连续、可导、可微 | 定积分与反常积分）</text>
+        <input class="chapter-input" placeholder="输入两组易混知识点" value="{{confuseInput}}" bindinput="onConfuseInput" />
+      </view>
+      <button class="generate-btn" wx:if="{{!confuseContent && !confuseLoading}}" bindtap="generateConfuse" disabled="{{confuseLoading}}">
+        ✨ 生成对比辨析
+      </button>
+
+      <view class="loading-area" wx:if="{{confuseLoading}}">
+        <view class="loading-card">
+          <view class="loading-spinner"></view>
+          <text>正在生成对比辨析，请稍候...</text>
+        </view>
+      </view>
+
+      <rich-text nodes="{{confuseNodes}}" wx:if="{{!confuseLoading && confuseContent}}"></rich-text>
+    </view>
+
+    </view>  <!-- showMoreTools 结束 -->
+
+  </scroll-view>
+
+  <view class="empty-tip" wx:if="{{activeTab === 0 && knowledgePoints.length === 0 && !loading}}">
+    <text class="empty-icon">📖</text>
+    <text class="empty-text">请先前往错题分析页完成诊断，或手动输入知识点</text>
+  </view>
+
+  <!-- Tab 1：学习规划 -->
+  <view wx:if="{{activeTab === 1}}">
+    <view class="param-section">
+      <!-- 知识点选择 -->
+      <text class="param-label">薄弱知识点（选择或输入）</text>
+      <view class="kp-tags" wx:if="{{knowledgePoints.length > 0}}">
+        <text class="kp-tag {{planSelectedKp === item ? 'kp-tag-active' : ''}}" wx:for="{{knowledgePoints}}" wx:key="index" bindtap="selectPlanKp" data-kp="{{item}}">{{item}}</text>
+      </view>
+      <input class="chapter-input" placeholder="或手动输入知识点" value="{{planCustomKp}}" bindinput="onPlanCustomKpInput" />
+
+      <view class="param-item" style="margin-top:20rpx;">
+        <text class="param-label">掌握水平</text>
+        <text class="param-value">{{level || '未诊断'}}</text>
+      </view>
+
+      <view class="param-row">
+        <view class="param-col">
+          <text class="param-label">学习目标</text>
+          <picker mode="selector" range="{{targetList}}" value="{{targetIndex}}" bindchange="onTargetChange">
+            <view class="picker-box">{{targetList[targetIndex]}}</view>
+          </picker>
+        </view>
+        <view class="param-col">
+          <text class="param-label">每日学习时长</text>
+          <view class="time-row">
+            <input class="time-input" type="number" value="{{studyTime}}" bindinput="onTimeInput" />
+            <text class="time-unit">小时</text>
+          </view>
+        </view>
+      </view>
+
+      <button class="generate-btn" bindtap="generatePlan" disabled="{{planLoading || (!planSelectedKp && !planCustomKp)}}">
+        {{planLoading ? '生成中...' : '✨ 生成学习方案'}}
+      </button>
+    </view>
+
+    <view class="loading-area" wx:if="{{planLoading}}">
+      <view class="loading-card">
+        <view class="loading-spinner"></view>
+        <text>正在生成个性化学习方案，请稍候...</text>
+      </view>
+    </view>
+
+    <scroll-view scroll-y class="content-scroll" wx:if="{{!planLoading && planContent}}">
+      <view class="content-box">
+        <view class="stat-row">
+          <view class="stat-item"><text class="stat-num">{{planStats.chars}}</text><text class="stat-label">字符数</text></view>
+          <view class="stat-item"><text class="stat-num">{{planStats.readTime}}min</text><text class="stat-label">阅读时长</text></view>
+          <view class="stat-item"><text class="stat-num">{{planStats.lines}}</text><text class="stat-label">段落数</text></view>
+        </view>
+        <view class="summary-cards" wx:if="{{planSummary.length > 0}}">
+          <view class="summary-item" wx:for="{{planSummary}}" wx:key="index">
+            <text class="summary-dot">{{index + 1}}</text>
+            <text class="summary-text">{{item}}</text>
+          </view>
+        </view>
+        <rich-text nodes="{{planNodes}}"></rich-text>
+      </view>
+    </scroll-view>
+
+    <view class="empty-tip" wx:if="{{!planLoading && !planContent && knowledgePoints.length === 0}}">
+      <text class="empty-icon">📖</text>
+      <text class="empty-text">请先前往错题分析页完成诊断</text>
+    </view>
+  </view>
+</view>

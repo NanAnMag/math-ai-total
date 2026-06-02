@@ -1,0 +1,24 @@
+<view class="page">
+  <view class="login-card">
+    <view class="login-header">
+      <text class="login-icon">🎓</text>
+      <text class="login-title">高数智能学习系统</text>
+    </view>
+
+    <!-- 切换 Tab -->
+    <view class="mode-tabs">
+      <view class="mode-tab {{mode === 'login' ? 'mode-active' : ''}}" bindtap="switchMode" data-mode="login">登录</view>
+      <view class="mode-tab {{mode === 'register' ? 'mode-active' : ''}}" bindtap="switchMode" data-mode="register">注册</view>
+    </view>
+
+    <view class="form">
+      <input class="form-input" placeholder="请输入用户名" value="{{username}}" bindinput="onUsernameInput" />
+      <input class="form-input" placeholder="请输入密码（至少6位）" password value="{{password}}" bindinput="onPasswordInput" />
+      <input class="form-input" wx:if="{{mode === 'register'}}" placeholder="再次输入密码" password value="{{password2}}" bindinput="onPassword2Input" />
+
+      <button class="submit-btn" bindtap="handleSubmit" disabled="{{loading}}" loading="{{loading}}">
+        {{loading ? '处理中...' : (mode === 'login' ? '登录' : '注册')}}
+      </button>
+    </view>
+  </view>
+</view>

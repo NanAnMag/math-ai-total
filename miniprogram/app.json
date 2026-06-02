@@ -1,0 +1,48 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/index/index",
+    "pages/analysis/analysis",
+    "pages/resource/resource",
+    "pages/chat/chat",
+    "pages/tools/tools"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#1677ff",
+    "navigationBarTitleText": "高数智能学习系统",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/icon-home.png",
+        "selectedIconPath": "images/icon-home-active.png"
+      },
+      {
+        "pagePath": "pages/analysis/analysis",
+        "text": "错题分析",
+        "iconPath": "images/icon-analysis.png",
+        "selectedIconPath": "images/icon-analysis-active.png"
+      },
+      {
+        "pagePath": "pages/resource/resource",
+        "text": "学习资源",
+        "iconPath": "images/icon-resource.png",
+        "selectedIconPath": "images/icon-resource-active.png"
+      },
+      {
+        "pagePath": "pages/chat/chat",
+        "text": "在线答疑",
+        "iconPath": "images/icon-chat.png",
+        "selectedIconPath": "images/icon-chat-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}

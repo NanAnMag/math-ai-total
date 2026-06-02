@@ -1,0 +1,62 @@
+<!--index.wxml-->
+<view class="page">
+  <view class="header">
+    <view class="header-icon">🎓</view>
+    <view class="header-title">高数智能学习系统</view>
+    <view class="header-subtitle">多智能体协同 · 拍照批改 · 语音播报 · 云端同步</view>
+    <view class="header-user" wx:if="{{user}}">
+      <text class="user-name">👤 {{user.username}}</text>
+      <text class="user-logout" bindtap="logout">退出</text>
+    </view>
+  </view>
+
+  <!-- 今日概况 -->
+  <view class="overview-card" wx:if="{{overview.weakPoint}}">
+    <view class="overview-row">
+      <view class="overview-item">
+        <text class="overview-num">{{overview.errorCount}}</text>
+        <text class="overview-label">累计错题</text>
+      </view>
+      <view class="overview-divider"></view>
+      <view class="overview-item">
+        <text class="overview-num overview-blue">{{overview.weakPoint}}</text>
+        <text class="overview-label">薄弱知识点</text>
+      </view>
+      <view class="overview-divider"></view>
+      <view class="overview-item">
+        <text class="overview-num overview-green">{{overview.levelText}}</text>
+        <text class="overview-label">掌握水平</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card-list">
+    <view class="card" bindtap="manualSync">
+      <view class="card-icon">🔄</view>
+      <view class="card-body">
+        <view class="card-title">同步数据</view>
+        <view class="card-desc">手动从云端拉取最新学习数据</view>
+      </view>
+    </view>
+
+    <view class="card" bindtap="goToPlan">
+      <view class="card-icon">📅</view>
+      <view class="card-body">
+        <view class="card-title">学习规划</view>
+        <view class="card-desc">基于学情诊断，生成个性化学习方案</view>
+      </view>
+    </view>
+
+    <view class="card" bindtap="goToTools">
+      <view class="card-icon">🧰</view>
+      <view class="card-body">
+        <view class="card-title">工具箱</view>
+        <view class="card-desc">督学提醒、数据看板、学习路径、偏好设置</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <text>点击卡片或下方标签开始使用 →</text>
+  </view>
+</view>

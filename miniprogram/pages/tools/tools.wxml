@@ -1,0 +1,106 @@
+<!--tools.wxml-->
+<scroll-view class="page" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{scrollTo}}">
+  <!-- ========== 督学提醒 ========== -->
+  <view class="tool-section" id="sec-supervise">
+    <view class="tool-header" bindtap="toggleTool" data-key="supervise">📋 督学提醒 <text class="toggle-arrow">{{toolCollapsed.supervise ? '▶' : '▼'}}</text></view>
+    <view wx:if="{{!toolCollapsed.supervise}}">
+      <view class="tool-desc">今日待办、复盘提醒、学习周报、考前冲刺</view>
+      <button class="tool-btn" bindtap="generateSupervise" wx:if="{{!superviseContent}}" disabled="{{superviseLoading}}" loading="{{superviseLoading}}">
+        {{superviseLoading ? '生成中...' : '✨ 生成督学提醒'}}
+      </button>
+      <view class="tool-result" wx:if="{{superviseContent}}">
+        <rich-text nodes="{{superviseNodes}}"></rich-text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== 学习路径规划 ========== -->
+  <view class="tool-section" id="sec-path">
+    <view class="tool-header" bindtap="toggleTool" data-key="path">🗺️ 学习路径规划 <text class="toggle-arrow">{{toolCollapsed.path ? '▶' : '▼'}}</text></view>
+    <view wx:if="{{!toolCollapsed.path}}">
+      <view class="tool-desc">从基础到进阶的完整高数学习路线</view>
+      <view class="tool-form">
+        <text class="param-label">已掌握知识点</text>
+        <input class="tool-input" placeholder="如：极限计算、导数基础" value="{{masteredKnow}}" bindinput="onMasteredInput" />
+        <text class="param-label" style="margin-top:16rpx;">学习目标</text>
+        <picker mode="selector" range="{{pathGoalList}}" value="{{pathGoalIndex}}" bindchange="onPathGoalChange">
+          <view class="picker-box">{{pathGoalList[pathGoalIndex]}}</view>
+        </picker>
+      </view>
+      <button class="tool-btn" bindtap="generatePath" wx:if="{{!pathContent}}" disabled="{{pathLoading}}" loading="{{pathLoading}}">
+        {{pathLoading ? '生成中...' : '✨ 生成学习路径'}}
+      </button>
+      <view class="tool-result" wx:if="{{pathContent}}">
+        <rich-text nodes="{{pathNodes}}"></rich-text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== 学习数据看板 ========== -->
+  <view class="tool-section" id="sec-dashboard">
+    <view class="tool-header" bindtap="toggleTool" data-key="dashboard">📈 学习数据看板 <text class="toggle-arrow">{{toolCollapsed.dashboard ? '▶' : '▼'}}</text></view>
+    <view wx:if="{{!toolCollapsed.dashboard}}">
+      <view class="tool-desc">全量学习数据分析报告，掌握情况一目了然</view>
+      <button class="tool-btn" bindtap="generateDashboard" wx:if="{{!dashboardContent}}" disabled="{{dashboardLoading}}" loading="{{dashboardLoading}}">
+        {{dashboardLoading ? '生成中...' : '✨ 生成数据报告'}}
+      </button>
+      <view class="dash-cards" wx:if="{{dashboardContent}}">
+        <view class="dash-row">
+          <view class="dash-card"><text class="dash-num">{{dashStats.errorCount}}</text><text class="dash-label">累计错题</text></view>
+          <view class="dash-card"><text class="dash-num">{{dashStats.weakPoint}}</text><text class="dash-label">薄弱知识点</text></view>
+          <view class="dash-card"><text class="dash-num">{{dashStats.levelText}}</text><text class="dash-label">掌握水平</text></view>
+        </view>
+        <view class="dash-progress-section">
+          <view class="dash-progress-header"><text class="dash-progress-label">整体掌握度</text><text class="dash-progress-pct">{{dashStats.masteryPercent}}%</text></view>
+          <view class="dash-donut-row">
+            <view class="dash-donut" style="background: conic-gradient(#1677ff 0deg {{dashStats.masteryPercent * 3.6}}deg, #f0f0f0 {{dashStats.masteryPercent * 3.6}}deg 360deg);">
+              <view class="dash-donut-inner"><text class="donut-num">{{dashStats.masteryPercent}}%</text></view>
+            </view>
+            <view class="dash-progress-bar" style="flex:1;"><view class="dash-progress-fill" style="width: {{dashStats.masteryPercent}}%;"></view></view>
+          </view>
+        </view>
+        <!-- CSS 知识点掌握柱状图 -->
+        <view class="dash-chart" wx:if="{{dashChartData.length > 0}}">
+          <text class="dash-chart-title">知识点掌握分布</text>
+          <view class="bar-item" wx:for="{{dashChartData}}" wx:key="index">
+            <text class="bar-label">{{item.name}}</text>
+            <view class="bar-track"><view class="bar-fill bar-color-{{index}}" style="width:{{item.pct}}%;"></view></view>
+            <text class="bar-pct">{{item.pct}}%</text>
+          </view>
+        </view>
+      </view>
+      <view class="tool-result" wx:if="{{dashboardContent}}">
+        <rich-text nodes="{{dashboardNodes}}"></rich-text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== 我的收藏 ========== -->
+  <view class="tool-section" id="sec-fav">
+    <view class="tool-header" bindtap="toggleTool" data-key="fav">⭐ 我的收藏 ({{favorites.length}}) <text class="toggle-arrow">{{toolCollapsed.fav ? '▶' : '▼'}}</text></view>
+    <view wx:if="{{!toolCollapsed.fav}}">
+      <view class="fav-list" wx:if="{{favorites.length > 0}}">
+        <view class="fav-item" wx:for="{{favorites}}" wx:key="index" bindtap="viewFavorite" data-index="{{index}}">
+          <view class="fav-title">{{item.title}}</view>
+          <view class="fav-preview">{{item.content.substring(0, 80)}}...</view>
+          <view class="fav-time">{{item.time}}</view>
+        </view>
+        <button class="tool-btn" bindtap="clearFavorites" style="background:#ff4d4f;margin-top:16rpx;">🗑️ 清空收藏</button>
+      </view>
+      <view class="empty-tip-sm" wx:else><text>暂无收藏，在学习资源页点击 ⭐收藏 即可保存</text></view>
+    </view>
+  </view>
+
+  <!-- ========== 偏好设置 ========== -->
+  <view class="tool-section" id="sec-pref">
+    <view class="tool-header">⚙️ 偏好设置</view>
+    <view class="tool-desc">设置学习风格、难度偏好，AI 记住你的习惯</view>
+    <view class="tool-form">
+      <textarea class="tool-textarea" placeholder="描述你的学习风格偏好..." value="{{userHabit}}" bindinput="onHabitInput" maxlength="500" auto-height />
+      <text class="pref-status" wx:if="{{habitSaved}}">✅ 偏好已保存</text>
+    </view>
+    <button class="tool-btn" bindtap="saveHabit">💾 保存偏好</button>
+  </view>
+
+  <view style="height: 60rpx;"></view>
+</scroll-view>

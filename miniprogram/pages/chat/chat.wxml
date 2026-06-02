@@ -1,0 +1,151 @@
+<!--chat.wxml-->
+<view class="page">
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 0 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="0">
+      <text>💬 在线答疑</text>
+    </view>
+    <view class="tab-item {{activeTab === 1 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="1">
+      <text>📐 公式推导</text>
+    </view>
+    <view class="tab-item {{activeTab === 2 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="2">
+      <text>🎙️ 语音讲解</text>
+    </view>
+  </view>
+
+  <!-- Tab 0：在线答疑 -->
+  <view class="chat-wrapper" wx:if="{{activeTab === 0}}">
+    <scroll-view class="chat-area" scroll-y scroll-into-view="{{scrollToView}}" scroll-with-animation enhanced show-scrollbar="{{false}}">
+      <view class="empty-chat" wx:if="{{messages.length === 0}}">
+        <text class="empty-icon">💬</text>
+        <text class="empty-title">在线答疑</text>
+        <text class="empty-desc">遇到高数难题？直接问我吧</text>
+      </view>
+
+      <view class="msg-wrapper" wx:for="{{messages}}" wx:key="id" id="msg-{{index}}">
+        <view class="msg-ai" wx:if="{{item.role === 'ai'}}">
+          <view class="ai-avatar">🤖</view>
+          <view class="msg-bubble ai-bubble"><text class="msg-text">{{item.content}}</text></view>
+        </view>
+        <view class="msg-user" wx:else>
+          <view class="msg-bubble user-bubble"><text class="msg-text">{{item.content}}</text></view>
+          <view class="user-avatar">🙋</view>
+        </view>
+      </view>
+
+      <view class="msg-ai" wx:if="{{typing}}">
+        <view class="ai-avatar">🤖</view>
+        <view class="msg-bubble ai-bubble typing-bubble">
+          <view class="typing-dots"><view class="dot"></view><view class="dot"></view><view class="dot"></view></view>
+        </view>
+      </view>
+      <view style="height: 120rpx;"></view>
+    </scroll-view>
+
+    <view class="input-bar">
+      <input class="msg-input" placeholder="输入你的问题..." placeholder-class="input-placeholder" value="{{inputValue}}" bindinput="onInput" bindconfirm="sendMessage" confirm-type="send" adjust-position="{{true}}" maxlength="500" />
+      <button class="send-btn" bindtap="sendMessage" disabled="{{!inputValue || typing}}">发送</button>
+    </view>
+  </view>
+
+  <!-- Tab 1：公式推导 -->
+  <view wx:if="{{activeTab === 1}}">
+    <view class="agent-header">
+      <text class="agent-badge">📐 公式推导讲解</text>
+      <text class="agent-desc">一步步溯源推导，不只给出最终公式</text>
+    </view>
+
+    <view class="input-section">
+      <view class="quick-formulas">
+        <text class="quick-label">常用公式：</text>
+        <view class="quick-tags">
+          <text class="quick-tag" bindtap="quickFormula" data-f="牛顿-莱布尼茨公式">牛莱公式</text>
+          <text class="quick-tag" bindtap="quickFormula" data-f="洛必达法则">洛必达</text>
+          <text class="quick-tag" bindtap="quickFormula" data-f="泰勒公式">泰勒展开</text>
+          <text class="quick-tag" bindtap="quickFormula" data-f="拉格朗日中值定理">拉格朗日</text>
+          <text class="quick-tag" bindtap="quickFormula" data-f="分部积分法">分部积分</text>
+          <text class="quick-tag" bindtap="quickFormula" data-f="格林公式">格林公式</text>
+        </view>
+      </view>
+      <textarea
+        class="formula-input"
+        placeholder="输入要推导的公式，如：牛顿-莱布尼茨公式、洛必达法则、拉格朗日中值定理..."
+        placeholder-class="placeholder"
+        value="{{formulaContent}}"
+        bindinput="onFormulaInput"
+        maxlength="1000"
+        auto-height
+      />
+      <button class="submit-btn" bindtap="deriveFormula" disabled="{{!formulaContent || formulaLoading}}" loading="{{formulaLoading}}">
+        {{formulaLoading ? '推导中...' : '🔍 开始推导'}}
+      </button>
+    </view>
+
+    <view class="loading-area" wx:if="{{formulaLoading}}">
+      <view class="loading-card">
+        <view class="loading-spinner"></view>
+        <text>AI 正在推导公式，请稍候...</text>
+      </view>
+    </view>
+
+    <scroll-view scroll-y class="formula-result-scroll" wx:if="{{formulaResult && !formulaLoading}}">
+      <view class="content-box">
+        <rich-text nodes="{{formulaNodes}}"></rich-text>
+      </view>
+    </scroll-view>
+
+    <view class="empty-state" wx:if="{{!formulaResult && !formulaLoading}}">
+      <text class="empty-icon">📐</text>
+      <text class="empty-text">输入公式名称，获取完整推导过程</text>
+    </view>
+  </view>
+
+  <!-- Tab 2：语音讲解 -->
+  <view wx:if="{{activeTab === 2}}">
+    <view class="agent-header">
+      <text class="agent-badge">🎙️ 语音答疑讲解</text>
+      <text class="agent-desc">口语化讲解文案，适合朗读或文字转语音，听觉友好</text>
+    </view>
+
+    <view class="input-section">
+      <textarea class="formula-input" placeholder="输入你的高数问题..." placeholder-class="placeholder" value="{{voiceQuestion}}" bindinput="onVoiceInput" maxlength="1000" auto-height />
+      <button class="submit-btn" bindtap="generateVoice" disabled="{{!voiceQuestion || voiceLoading}}" loading="{{voiceLoading}}">
+        {{voiceLoading ? '生成中...' : '🎙️ 生成语音讲解'}}
+      </button>
+    </view>
+
+    <view class="loading-area" wx:if="{{voiceLoading}}">
+      <view class="loading-card">
+        <view class="loading-spinner"></view>
+        <text>正在生成语音讲解文案...</text>
+      </view>
+    </view>
+
+    <!-- 语音播放控制栏 -->
+    <view class="voice-controls" wx:if="{{voiceContent && !voiceLoading}}">
+      <button class="voice-play-btn" bindtap="toggleVoicePlay">
+        {{voicePlaying ? '⏸️ 暂停' : (voicePaused ? '▶️ 继续' : '🔊 播放')}}
+      </button>
+      <text class="voice-status-text" wx:if="{{voicePlaying}}">豆包播报中...</text>
+      <text class="voice-status-text" wx:if="{{voicePaused}}">已暂停</text>
+    </view>
+
+    <!-- 词级高亮跟随文本 -->
+    <scroll-view scroll-y class="formula-result-scroll" wx:if="{{voiceContent && !voiceLoading}}" scroll-into-view="w-{{voiceHighlightIdx}}">
+      <view class="content-box voice-word-box">
+        <text
+          wx:for="{{voiceWords}}"
+          wx:key="index"
+          id="w-{{index}}"
+          class="voice-word {{index === voiceHighlightIdx && voicePlaying ? 'voice-word-active' : ''}}"
+        >{{item.text}}</text>
+        <text wx:if="{{voiceWords.length === 0}}">{{voiceContent}}</text>
+      </view>
+    </scroll-view>
+
+    <view class="empty-state" wx:if="{{!voiceContent && !voiceLoading}}">
+      <text class="empty-icon">🎙️</text>
+      <text class="empty-text">输入问题，获取适合朗读的口语化讲解</text>
+    </view>
+  </view>
+</view>

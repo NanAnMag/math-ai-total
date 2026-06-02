@@ -1,0 +1,207 @@
+<!--analysis.wxml-->
+<view class="page">
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 0 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="0">
+      <text>🧠 学情诊断</text>
+    </view>
+    <view class="tab-item {{activeTab === 1 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="1">
+      <text>📝 作业批改</text>
+    </view>
+    <view class="tab-item {{activeTab === 2 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="2">
+      <text>📒 错题本</text>
+    </view>
+    <view class="tab-item {{activeTab === 3 ? 'tab-active' : ''}}" bindtap="switchTab" data-index="3">
+      <text>🔗 知识图谱</text>
+    </view>
+  </view>
+
+  <!-- Tab 0：学情诊断 -->
+  <view wx:if="{{activeTab === 0}}">
+    <view class="agent-header">
+      <text class="agent-badge">🧠 学情诊断智能体</text>
+      <text class="agent-desc">AI 深度分析错题，精准定位薄弱点，提供个性化提升建议</text>
+    </view>
+
+    <view class="input-section">
+      <view class="section-header">
+        <text class="section-title">📝 输入错题内容</text>
+        <view class="refresh-btn" bindtap="resetForm" wx:if="{{wrongContent || result}}">
+          <text class="refresh-icon">🔄</text>
+          <text class="refresh-text">刷新</text>
+        </view>
+      </view>
+
+      <textarea
+        class="wrong-input"
+        placeholder="粘贴或输入错题，如含有数学公式可直接粘贴…"
+        placeholder-class="placeholder"
+        value="{{wrongContent}}"
+        bindinput="onInputChange"
+        maxlength="2000"
+        auto-height
+      />
+
+      <view class="input-footer">
+        <text class="char-count">{{wrongContent.length}}/2000</text>
+      </view>
+      <button class="submit-btn" bindtap="submitAnalysis" disabled="{{!wrongContent || loading}}" loading="{{loading}}">
+        {{loading ? '分析中...' : '🔍 开始分析'}}
+      </button>
+    </view>
+
+    <view class="loading-area" wx:if="{{loading}}">
+      <view class="loading-card">
+        <view class="loading-spinner"></view>
+        <text class="loading-text">4个AI智能体协同工作中：诊断 + 出题 + 错题本 + 知识图谱...</text>
+      </view>
+    </view>
+
+    <view class="result-section" wx:if="{{result && !loading}}">
+      <view class="section-title">📋 分析结果</view>
+      <view class="result-card">
+        <view class="card-header"><text class="card-icon">🎯</text><text class="card-label">薄弱知识点</text></view>
+        <view class="card-content"><text wx:for="{{result.weakPoints}}" wx:key="*this" class="tag">{{item}}</text></view>
+      </view>
+      <view class="result-card" wx:if="{{result.errorType}}">
+        <view class="card-header"><text class="card-icon">🏷️</text><text class="card-label">错误类型</text></view>
+        <view class="card-content"><text class="text-block">{{result.errorType}}</text></view>
+      </view>
+      <view class="result-card">
+        <view class="card-header"><text class="card-icon">⚠️</text><text class="card-label">错误原因</text></view>
+        <view class="card-content"><text class="text-block">{{result.errorReason}}</text></view>
+      </view>
+      <view class="result-card">
+        <view class="card-header"><text class="card-icon">📈</text><text class="card-label">掌握水平</text></view>
+        <view class="card-content">
+          <view class="level-bar-bg"><view class="level-bar-fill" style="width: {{result.masteryLevel}}%;"></view></view>
+          <text class="level-text">{{result.masteryLevelText}}</text>
+        </view>
+      </view>
+      <view class="result-card" wx:if="{{result.easyMistakePoints}}">
+        <view class="card-header"><text class="card-icon">🔍</text><text class="card-label">高频易错点</text></view>
+        <view class="card-content"><text class="text-block">{{result.easyMistakePoints}}</text></view>
+      </view>
+      <view class="result-card">
+        <view class="card-header"><text class="card-icon">💡</text><text class="card-label">学习建议</text></view>
+        <view class="card-content"><text class="text-block">{{result.suggestion}}</text></view>
+      </view>
+      <view class="action-btn-msg" wx:if="{{workflowResult}}">✅ 配套习题已同步至学习资源，切换Tab即可查看</view>
+      <button class="action-btn" bindtap="goToExercise">✨ 前往学习资源查看习题</button>
+    </view>
+
+    <view class="empty-state" wx:if="{{!result && !loading}}">
+      <text class="empty-icon">📖</text>
+      <text class="empty-text">输入错题内容，获取 AI 智能分析</text>
+    </view>
+  </view>
+
+  <!-- Tab 1：作业批改 -->
+  <view wx:if="{{activeTab === 1}}">
+    <view class="agent-header">
+      <text class="agent-badge">📝 作业批改智能体</text>
+      <text class="agent-desc">拍照上传或输入文字，AI 自动批改纠错点评</text>
+    </view>
+
+    <view class="upload-section">
+      <view class="upload-row">
+        <image class="upload-preview" wx:if="{{gradeImage}}" src="{{gradeImage}}" mode="aspectFit" bindtap="chooseImage"></image>
+        <view class="upload-box" wx:else bindtap="chooseImage">
+          <text class="upload-icon">📸</text>
+          <text class="upload-text">点击拍照或选择图片</text>
+        </view>
+      </view>
+      <view wx:if="{{!gradeImage}}" style="text-align:center;padding:16rpx;">
+        <text style="font-size:24rpx;color:#bbb;">拍照上传题目，AI 自动识别并批改</text>
+      </view>
+    </view>
+
+    <view class="input-section">
+      <button class="submit-btn" bindtap="submitGrade" disabled="{{!gradeImage || gradeLoading}}" loading="{{gradeLoading}}">
+        {{gradeLoading ? '批改中...' : '🔍 开始批改'}}
+      </button>
+    </view>
+
+    <view class="loading-area" wx:if="{{gradeLoading}}">
+      <view class="loading-card"><view class="loading-spinner"></view><text class="loading-text">AI 正在批改作业...</text></view>
+    </view>
+
+    <scroll-view scroll-y class="grade-result-scroll" wx:if="{{gradeResult && !gradeLoading}}">
+      <view class="content-box"><rich-text nodes="{{gradeNodes}}"></rich-text></view>
+    </scroll-view>
+
+    <view class="empty-state" wx:if="{{!gradeResult && !gradeLoading}}">
+      <text class="empty-icon">📝</text>
+      <text class="empty-text">输入原题目和学生作答内容</text>
+    </view>
+  </view>
+
+  <!-- Tab 2：智能错题本 -->
+  <view wx:if="{{activeTab === 2}}">
+    <view class="agent-header">
+      <text class="agent-badge">📒 智能错题本</text>
+      <text class="agent-desc">错题整理归类、变式强化、复习建议，打造专属错题本</text>
+    </view>
+    <view class="input-section">
+      <view class="param-item">
+        <text class="param-label">已收集错题</text>
+        <text class="param-value">{{filteredErrorList.length}} / {{errorList.length}} 道</text>
+      </view>
+      <view class="kp-tags" wx:if="{{errorKpList.length > 0}}">
+        <text class="kp-tag {{errorFilterKp === '' ? 'kp-tag-active' : ''}}" bindtap="filterErrorByKp" data-kp="">全部</text>
+        <text class="kp-tag {{errorFilterKp === item ? 'kp-tag-active' : ''}}" wx:for="{{errorKpList}}" wx:key="index" bindtap="filterErrorByKp" data-kp="{{item}}">{{item}}</text>
+      </view>
+      <view class="error-list-preview" wx:if="{{filteredErrorList.length > 0}}">
+        <view class="error-item" wx:for="{{filteredErrorList}}" wx:key="index">
+          <text class="error-index">#{{index + 1}}</text>
+          <text class="error-text">{{item}}</text>
+        </view>
+      </view>
+      <view class="empty-tip-sm" wx:if="{{errorList.length === 0}}"><text>暂无错题记录</text></view>
+      <textarea class="grade-input" wx:if="{{errorList.length === 0}}" placeholder="或手动输入错题内容..." value="{{manualErrorInput}}" bindinput="onManualErrorInput" maxlength="3000" auto-height />
+    </view>
+    <button class="submit-btn" bindtap="generateNotebook" disabled="{{notebookLoading || (errorList.length === 0 && !manualErrorInput)}}" loading="{{notebookLoading}}">
+      {{notebookLoading ? '生成中...' : '📒 生成智能错题本'}}
+    </button>
+    <view class="loading-area" wx:if="{{notebookLoading}}"><view class="loading-card"><view class="loading-spinner"></view><text>AI 正在整理错题本...</text></view></view>
+    <scroll-view scroll-y class="grade-result-scroll" wx:if="{{notebookResult && !notebookLoading}}"><view class="content-box"><rich-text nodes="{{notebookNodes}}"></rich-text></view></scroll-view>
+    <view class="empty-state" wx:if="{{!notebookResult && !notebookLoading}}"><text class="empty-icon">📒</text><text class="empty-text">提交错题后生成专属错题本</text></view>
+  </view>
+
+  <!-- Tab 3：知识图谱解读 -->
+  <view wx:if="{{activeTab === 3}}">
+    <view class="agent-header">
+      <text class="agent-badge">🔗 知识图谱解读</text>
+      <text class="agent-desc">定位知识点在完整高数体系中的位置，关联学习路径一目了然</text>
+    </view>
+
+    <view class="input-section">
+      <view class="param-item">
+        <text class="param-label">当前薄弱知识点（从诊断结果读取）</text>
+        <text class="param-value">{{graphPoint || '未诊断'}}</text>
+      </view>
+      <input class="chapter-input" placeholder="或手动输入知识点，如：定积分" value="{{graphInput}}" bindinput="onGraphInput" />
+      <button class="submit-btn" bindtap="generateGraph" disabled="{{graphLoading || (!graphPoint && !graphInput)}}" loading="{{graphLoading}}">
+        {{graphLoading ? '生成中...' : '🔍 解读知识图谱'}}
+      </button>
+    </view>
+
+    <view class="loading-area" wx:if="{{graphLoading}}">
+      <view class="loading-card">
+        <view class="loading-spinner"></view>
+        <text class="loading-text">AI 正在分析知识图谱...</text>
+      </view>
+    </view>
+
+    <scroll-view scroll-y class="grade-result-scroll" wx:if="{{graphContent && !graphLoading}}">
+      <view class="content-box">
+        <rich-text nodes="{{graphNodes}}"></rich-text>
+      </view>
+    </scroll-view>
+
+    <view class="empty-state" wx:if="{{!graphContent && !graphLoading}}">
+      <text class="empty-icon">🔗</text>
+      <text class="empty-text">点击按钮查看薄弱知识点的完整知识图谱</text>
+    </view>
+  </view>
+</view>
