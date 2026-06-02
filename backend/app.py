@@ -349,5 +349,8 @@ def grade_image():
 def home():
     return "高数AI系统后端运行中"
 
+# PythonAnywhere需要的WSGI入口
+application = app
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
