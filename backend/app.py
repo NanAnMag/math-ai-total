@@ -42,8 +42,10 @@ def call_llm(prompt):
     full_prompt = GLOBAL_EXPLAIN_RULE + "\n" + prompt
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     data = {"model": "deepseek-chat", "messages": [{"role": "user", "content": full_prompt}], "temperature": 0.2}
+    # PythonAnywhere免费版需通过代理访问外部API
+    proxies = {"http": "http://proxy.server:3128", "https": "http://proxy.server:3128"}
     try:
-        resp = requests.post(API_URL, headers=headers, json=data, timeout=30)
+        resp = requests.post(API_URL, headers=headers, json=data, timeout=60, proxies=proxies)
         return resp.json()["choices"][0]["message"]["content"]
     except Exception as e:
         return f"AI调用失败：{str(e)}"
